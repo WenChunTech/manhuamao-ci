@@ -110,13 +110,11 @@ async fn get_chapter(
     Ok(())
 }
 
-async fn get_one_commic(client: &reqwest::Client, url: String)->Result<(), Box<dyn std::error::Error>>{
-    let resp = client
-        .get(url)
-        .send()
-        .await?
-        .text()
-        .await?;
+async fn get_one_commic(
+    client: &reqwest::Client,
+    url: String,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let resp = client.get(url).send().await?.text().await?;
     let soup = Soup::new(&resp);
 
     let title = soup
@@ -124,7 +122,7 @@ async fn get_one_commic(client: &reqwest::Client, url: String)->Result<(), Box<d
         .attr("class", "media")
         .attr("class", "comic-book-unit")
         .find_all();
-    let mut v  = Vec::new();
+    let mut v = Vec::new();
     for item in title {
         let a_link = item
             .tag("a")
@@ -141,14 +139,14 @@ async fn get_one_commic(client: &reqwest::Client, url: String)->Result<(), Box<d
         v.push(get_chapter(
             client,
             a_link.get("href").unwrap(),
-            format!("/comic/{}", comic_name),
+            format!("./comic/{}", comic_name),
         ));
     }
     join_all(v).await;
     Ok(())
 }
 
-async fn get_all_pages(client: reqwest::Client) ->Result<(), Box<dyn std::error::Error>>{
+async fn get_all_pages(client: reqwest::Client) -> Result<(), Box<dyn std::error::Error>> {
     let resp = &client
         .get("https://www.manhuacat.com/list-page-1.html")
         .send()
@@ -162,10 +160,21 @@ async fn get_all_pages(client: reqwest::Client) ->Result<(), Box<dyn std::error:
         .attr("class", "btn-light")
         .attr("class", "mr-1")
         .attr("class", "mb-1")
-        .find_all().into_iter().last().unwrap().text();
+        .find_all()
+        .into_iter()
+        .last()
+        .unwrap()
+        .text();
     let mut v = Vec::new();
-    for index in 1..=last_page_index.parse().unwrap(){
-        v.push(get_one_commic(&client, format!("https://www.manhuacat.com/list-page-{}.html", index)));
+    for index in 1..=last_page_index.parse().unwrap() {
+        // get_one_commic(
+        //     &client,
+        //     format!("https://www.manhuacat.com/list-page-{}.html", index),
+        // ).await?;
+        v.push(get_one_commic(
+            &client,
+            format!("https://www.manhuacat.com/list-page-{}.html", index),
+        ));
     }
     join_all(v).await;
     Ok(())
@@ -173,9 +182,8 @@ async fn get_all_pages(client: reqwest::Client) ->Result<(), Box<dyn std::error:
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cli = reqwest::Client::new();
-    get_all_pages(cli).await?;
-    
+    let client = reqwest::Client::new();
+    get_all_pages(client).await?;
     Ok(())
 }
 
